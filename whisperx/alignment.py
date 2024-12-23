@@ -211,8 +211,21 @@ def align(
             continue
 
         text_clean = "".join(segment["clean_char"])
-        tokens = [model_dictionary[c] for c in text_clean]
 
+        # fix IndexError: index 34 is out of bounds
+        token_ids = []
+        for c in text_clean:
+            idx = model_dictionary[c]
+            if idx < emission.shape[1]:
+                token_ids.append(idx)
+
+        if len(token_ids) == 0:
+            print(
+                f'Failed to align segment ("{segment["text"]}"): all tokens are out-of-vocab for the alignment model, resorting to original...')
+            aligned_segments.append(aligned_seg)
+            continue
+
+        tokens = token_ids
         f1 = int(t1 * SAMPLE_RATE)
         f2 = int(t2 * SAMPLE_RATE)
 
