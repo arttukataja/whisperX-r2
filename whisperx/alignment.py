@@ -115,14 +115,14 @@ def align(
     """
     Align phoneme recognition predictions to known transcription.
     """
-    
+
     if not torch.is_tensor(audio):
         if isinstance(audio, str):
             audio = load_audio(audio)
         audio = torch.from_numpy(audio)
     if len(audio.shape) == 1:
         audio = audio.unsqueeze(0)
-    
+
     MAX_DURATION = audio.shape[1] / SAMPLE_RATE
 
     model_dictionary = align_model_metadata["dictionary"]
@@ -137,7 +137,7 @@ def align(
             base_progress = ((sdx + 1) / total_segments) * 100
             percent_complete = (50 + base_progress / 2) if combined_progress else base_progress
             print(f"Progress: {percent_complete:.2f}%...")
-            
+
         num_leading = len(segment["text"]) - len(segment["text"].lstrip())
         num_trailing = len(segment["text"]) - len(segment["text"].rstrip())
         text = segment["text"]
@@ -154,7 +154,7 @@ def align(
             # wav2vec2 models use "|" character to represent spaces
             if model_lang not in LANGUAGES_WITHOUT_SPACES:
                 char_ = char_.replace(" ", "|")
-            
+
             # ignore whitespace at beginning and end of transcript
             if cdx < num_leading:
                 pass
@@ -169,7 +169,7 @@ def align(
             if any([c in model_dictionary.keys() for c in wrd]):
                 clean_wdx.append(wdx)
 
-                
+
         punkt_param = PunktParameters()
         punkt_param.abbrev_types = set(PUNKT_ABBREVIATIONS)
         sentence_splitter = PunktSentenceTokenizer(punkt_param)
@@ -179,12 +179,12 @@ def align(
         segment["clean_cdx"] = clean_cdx
         segment["clean_wdx"] = clean_wdx
         segment["sentence_spans"] = sentence_spans
-    
+
     aligned_segments: List[SingleAlignedSegment] = []
-    
+
     # 2. Get prediction matrix from alignment model & align
     for sdx, segment in enumerate(transcript):
-        
+
         t1 = segment["start"]
         t2 = segment["end"]
         text = segment["text"]
@@ -212,12 +212,14 @@ def align(
 
         text_clean = "".join(segment["clean_char"])
 
-        # fix IndexError: index 34 is out of bounds
+        # Collect token IDs from the model dictionary
         token_ids = []
         for c in text_clean:
-            idx = model_dictionary[c]
-            if idx < emission.shape[1]:
+            if c in model_dictionary:
+                idx = model_dictionary[c]
                 token_ids.append(idx)
+            else:
+                print(f"Character '{c}' not found in model dictionary.")
 
         if len(token_ids) == 0:
             print(
@@ -239,7 +241,7 @@ def align(
             )
         else:
             lengths = None
-            
+
         with torch.inference_mode():
             if model_type == "torchaudio":
                 emissions, _ = model(waveform_segment.to(device), lengths=lengths)
@@ -295,7 +297,7 @@ def align(
                 word_idx += 1
             elif cdx == len(text) - 1 or text[cdx+1] == " ":
                 word_idx += 1
-            
+
         char_segments_arr = pd.DataFrame(char_segments_arr)
 
         aligned_subsegments = []
@@ -304,7 +306,7 @@ def align(
         for sdx, (sstart, send) in enumerate(segment["sentence_spans"]):
             curr_chars = char_segments_arr.loc[(char_segments_arr.index >= sstart) & (char_segments_arr.index <= send)]
             char_segments_arr.loc[(char_segments_arr.index >= sstart) & (char_segments_arr.index <= send), "sentence-idx"] = sdx
-        
+
             sentence_text = text[sstart:send]
             sentence_start = curr_chars["start"].min()
             end_chars = curr_chars[curr_chars["char"] != ' ']
@@ -324,7 +326,7 @@ def align(
                 word_end = word_chars["end"].max()
                 word_score = round(word_chars["score"].mean(), 3)
 
-                # -1 indicates unalignable 
+                # -1 indicates unalignable
                 word_segment = {"word": word_text}
 
                 if not np.isnan(word_start):
@@ -335,7 +337,7 @@ def align(
                     word_segment["score"] = word_score
 
                 sentence_words.append(word_segment)
-            
+
             aligned_subsegments.append({
                 "text": sentence_text,
                 "start": sentence_start,
