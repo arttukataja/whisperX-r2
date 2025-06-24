@@ -45,6 +45,14 @@ def load_vad_model(device, vad_onset=0.500, vad_offset=0.363, use_auth_token=Non
     vad_pipeline = VoiceActivitySegmentation(segmentation=vad_model, device=torch.device(device))
     vad_pipeline.instantiate(hyperparameters)
 
+    # Re-enable TF32 after pyannote modified it
+    try:
+        from whisperx.utils import enable_tf32
+
+        enable_tf32()
+    except Exception:
+        pass
+
     return vad_pipeline
 
 class Binarize:

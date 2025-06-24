@@ -5,6 +5,8 @@ import sys
 import zlib
 from typing import Callable, Optional, TextIO
 
+import torch
+
 LANGUAGES = {
     "en": "english",
     "zh": "chinese",
@@ -440,3 +442,16 @@ def interpolate_nans(x, method='nearest'):
         return x.interpolate(method=method).ffill().bfill()
     else:
         return x.ffill().bfill()
+
+
+def enable_tf32():
+    """Re-enable TF32 on CUDA devices if available.
+
+    Pyannote disables TF32 to ensure reproducibility which might reduce
+    WhisperX performance. This helper restores TF32 settings after loading
+    pyannote models.
+    """
+
+    if torch.cuda.is_available():
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
