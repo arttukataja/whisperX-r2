@@ -266,10 +266,10 @@ def align(
 
         trellis = get_trellis(emission, tokens, blank_id)
         # fix by Arttu 8.8.2023
-        #if trellis is None:
-        #    print("trellis error, resorting to original")
-        #    aligned_segments.append(aligned_seg)
-        #    continue
+        if trellis is None:
+            print("trellis error, resorting to original")
+            aligned_segments.append(aligned_seg)
+            continue
         # /fix by Arttu 8.8.2023
         # path = backtrack(trellis, emission, tokens, blank_id)
         path = backtrack_beam(trellis, emission, tokens, blank_id, beam_width=2)
@@ -396,10 +396,10 @@ def get_trellis(emission, tokens, blank_id=0):
 
     # fix by Arttu added 8.8.2023
     # Check if any token index is out of bounds
-    #max_token = max(tokens)
-    #if max_token >= emission.size(1):
-    #    print("get_trellis error")
-    #    return None
+    max_token = max(tokens)
+    if max_token >= emission.size(1):
+        print("get_trellis error")
+        return None
     # /fix by Arttu added 8.8.2023
 
     trellis = torch.zeros((num_frame, num_tokens))
