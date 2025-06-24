@@ -455,3 +455,14 @@ def enable_tf32():
     if torch.cuda.is_available():
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
+
+
+def suppress_reproducibility_warnings():
+    """Suppress pyannote's reproducibility warnings about TF32."""
+    try:
+        from pyannote.audio.utils.reproducibility import ReproducibilityWarning
+        import warnings
+
+        warnings.filterwarnings("ignore", category=ReproducibilityWarning)
+    except Exception:
+        pass
