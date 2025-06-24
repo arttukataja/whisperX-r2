@@ -20,6 +20,14 @@ class DiarizationPipeline:
         model_config = model_name or "pyannote/speaker-diarization-3.1"
         self.model = Pipeline.from_pretrained(model_config, use_auth_token=use_auth_token).to(device)
 
+        # Re-enable TF32 after pyannote modified it
+        try:
+            from whisperx.utils import enable_tf32
+
+            enable_tf32()
+        except Exception:
+            pass
+
     def __call__(
         self,
         audio: Union[str, np.ndarray],
