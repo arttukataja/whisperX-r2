@@ -89,14 +89,6 @@ result = whisperx.assign_word_speakers(diarize_segments, result)
 assign_time = time.time() - assign_start
 print(f"  ✓ Speaker assignment completed in {assign_time:.2f}s")
 
-print(f"\n  DIARIZATION RESULTS:")
-print(f"    Found {len(set([seg.label for seg in diarize_segments.itertracks(yield_label=True)]))} unique speakers")
-
-print(f"\n  FINAL SEGMENTS WITH SPEAKERS:")
-for i, segment in enumerate(result["segments"][:3]):  # Show first 3 segments
-    speaker = segment.get('speaker', 'Unknown')
-    print(f"    [{i+1}] {segment['start']:.2f}s-{segment['end']:.2f}s [{speaker}]: {segment['text'][:50]}...")
-
 # Calculate and display timing results
 end_time = time.time()
 processing_time = end_time - start_time
