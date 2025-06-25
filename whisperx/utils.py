@@ -458,11 +458,12 @@ def enable_tf32():
 
 
 def suppress_reproducibility_warnings():
-    """Suppress pyannote's reproducibility warnings about TF32."""
+    """Suppress pyannote's reproducibility warnings and configure torch.load."""
     try:
-        from pyannote.audio.utils.reproducibility import ReproducibilityWarning
-        import warnings
+        # Allow pyannote checkpoints containing omegaconf.ListConfig objects
+        from omegaconf.listconfig import ListConfig
+        from torch.serialization import add_safe_globals
 
-        warnings.filterwarnings("ignore", category=ReproducibilityWarning)
+        add_safe_globals([ListConfig])
     except Exception:
         pass
