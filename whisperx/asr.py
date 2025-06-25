@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional, Union
 from dataclasses import replace
+import platform
 
 import ctranslate2
 import faster_whisper
@@ -329,6 +330,12 @@ def load_model(
     Returns:
         A Whisper pipeline.
     """
+
+    # Auto-detect compatible compute type for Apple Silicon
+    if device == "cpu" and platform.machine() == "arm64" and platform.system() == "Darwin":
+        if compute_type == "float16":
+            compute_type = "int8"
+            print(f"Apple Silicon detected, using compute_type='{compute_type}' for compatibility")
 
     if whisper_arch.endswith(".en"):
         language = "en"
