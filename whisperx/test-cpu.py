@@ -25,14 +25,24 @@ print(f"  Compute type: {compute_type}")
 # Start timing
 start_time = time.time()
 
-print(f"\n[2/5] LOADING WHISPER MODEL...")
-# 1. Transcribe with original whisper (batched)
-##model = whisperx.load_model("large-v2", device, compute_type=compute_type)
 
 # save model to local path (optional)
 model_dir = os.path.expanduser("~/dev/models")
-model = whisperx.load_model("large-v3", device, compute_type=compute_type, download_root=model_dir)
-print(f"  ✓ Whisper model loaded successfully")
+print(f"\n[2/5] LOADING WHISPER MODEL...")
+print(f"  Model directory: {model_dir}")
+
+
+print(f"  Loading model to {device} with {compute_type}...")
+load_start = time.time()
+
+try:
+    model = whisperx.load_model("large-v3", device, compute_type=compute_type, download_root=model_dir)
+    load_time = time.time() - load_start
+    print(f"  ✓ Whisper model loaded successfully in {load_time:.2f}s")
+except Exception as e:
+    print(f"  ✗ Error loading model: {e}")
+    raise
+
 
 print(f"\n[3/5] LOADING AUDIO...")
 audio = whisperx.load_audio(audio_file)
