@@ -4,6 +4,7 @@ import time
 import librosa
 import os
 
+print("hello cuda")
 
 
 device = "cuda"
