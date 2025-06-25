@@ -13,6 +13,7 @@ from pyannote.core import Segment
 
 from whisperx.diarize import Segment as SegmentX
 from whisperx.vads.vad import Vad
+from whisperx.utils import suppress_reproducibility_warnings
 
 
 def load_vad_model(device, vad_onset=0.500, vad_offset=0.363, use_auth_token=None, model_fp=None):
@@ -37,6 +38,7 @@ def load_vad_model(device, vad_onset=0.500, vad_offset=0.363, use_auth_token=Non
 
     model_bytes = open(model_fp, "rb").read()
 
+    suppress_reproducibility_warnings()
     vad_model = Model.from_pretrained(model_fp, use_auth_token=use_auth_token)
     hyperparameters = {"onset": vad_onset,
                     "offset": vad_offset,
