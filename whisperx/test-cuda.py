@@ -8,7 +8,7 @@ import os
 
 device = "cuda"
 #device = "cpu"
-audio_file = "whisperx/audio/musiikkiluvat-3min.mp3"
+audio_file = "whisperx-audio/musiikkiluvat-3min.mp3"
 batch_size = 16 # reduce if low on GPU mem
 compute_type = "float16" # change to "int8" if low on GPU mem (may reduce accuracy)
 
