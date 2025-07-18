@@ -19,7 +19,7 @@ else:
     device = "cpu"
     compute_type = "int8"  # better for CPU
 
-audio_file = "audio/tukevasti-ilmassa-10min.mp3"
+audio_file = "audio/tukevasti-ilmassa-3min.mp3"
 batch_size = 16  # reduce if low on GPU mem
 
 print(f"\n[1/10] CONFIGURATION:")
@@ -32,15 +32,15 @@ print(f"  Compute type: {compute_type}")
 start_time = time.time()
 
 # save model to local path (optional)
-model_dir = os.path.expanduser("~/dev/models")
-print(f"\n[2/10] LOADING WHISPER MODEL...")
-print(f"  Model directory: {model_dir}")
+#model_dir = os.path.expanduser("~/dev/models")
+#print(f"\n[2/10] LOADING WHISPER MODEL...")
+#print(f"  Model directory: {model_dir}")
 
 print(f"  Loading model to {device} with {compute_type}...")
 load_start = time.time()
 
 try:
-    model = whisperx.load_model("large-v3", device, compute_type=compute_type, download_root=model_dir)
+    model = whisperx.load_model("large-v3", device, compute_type=compute_type)
     load_time = time.time() - load_start
     print(f"  ✓ Whisper model loaded successfully in {load_time:.2f}s")
 except Exception as e:
