@@ -19,7 +19,7 @@ else:
     device = "cpu"
     compute_type = "int8"  # better for CPU
 
-audio_file = "audio/tukevasti-ilmassa-lyhyt.mp3"
+audio_file = "audio/tukevasti-ilmassa-10min.mp3"
 batch_size = 16  # reduce if low on GPU mem
 
 print(f"\n[1/10] CONFIGURATION:")
@@ -80,13 +80,17 @@ for i, segment in enumerate(result["segments"][:3]):  # Show first 3 segments
     print(f"    [{i + 1}] {segment['start']:.2f}s-{segment['end']:.2f}s: {segment['text'][:50]}...")
 
 print(f"\n[7/10] LOADING DIARIZATION MODEL...")
-diarize_model = whisperx.diarize.DiarizationPipeline(use_auth_token=os.getenv("HF_TOKEN"), device=device)
+hftoken = os.getenv("HF_TOKEN")
+print("hftoken:", hftoken)
+diarize_model = whisperx.diarize.DiarizationPipeline(use_auth_token=hftoken, device=device)
+#diarize_model = whisperx.diarize.DiarizationPipeline(use_auth_token=os.getenv("HF_TOKEN"), device=device)
 print(f"  ✓ Diarization model loaded")
 
 print(f"\n[8/10] PERFORMING SPEAKER DIARIZATION...")
 diarize_start = time.time()
 # add min/max number of speakers if known
 diarize_segments = diarize_model(audio)
+#diarize_segments = diarize_model(audio, min_speakers=0, max_speakers=0)
 diarize_time = time.time() - diarize_start
 print(f"  ✓ Diarization completed in {diarize_time:.2f}s")
 
