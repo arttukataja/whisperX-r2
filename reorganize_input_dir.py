@@ -3,13 +3,14 @@
 Program to organize ./input/ subdirectories based on identifier words.
 
 Rules:
-- Organization directories: contain only subdirectories, no .mp3 files
+- Organization directories: contain only subdirectories, no .mp3 files, and no dash characters in name
 - Transcript directories: contain .mp3 files, located directly under ./input/
+- Archive directories: contain 'arkisto' or 'archive' in their name
 - Identifier word: text after first '-' and before second '-' or '.'
 - Move transcript directories under matching organization directories
+- Archive directories and their subdirectories are excluded from organization
 """
 
-import os
 import shutil
 from pathlib import Path
 from typing import List, Dict, Tuple
@@ -50,6 +51,10 @@ def is_organization_directory(path: Path) -> bool:
     if not path.is_dir():
         return False
 
+    # Organization directory names should not contain dash characters
+    if '-' in path.name:
+        return False
+
     # Check that there are no .mp3 files
     for item in path.iterdir():
         if item.is_file() and item.suffix.lower() == '.mp3':
@@ -60,12 +65,40 @@ def is_organization_directory(path: Path) -> bool:
     return True
 
 
+def is_archive_directory(path: Path) -> bool:
+    """Check if directory is an archive directory (contains 'arkisto' or 'archive' in name)."""
+    if not path.is_dir():
+        return False
+
+    name_lower = path.name.lower()
+    return 'arkisto' in name_lower or 'archive' in name_lower
+
+
+def is_under_archive_directory(path: Path, input_path: Path) -> bool:
+    """Check if directory is under any archive directory."""
+    # Get all parent directories up to input_path
+    current = path.parent
+    while current != input_path and current != current.parent:
+        if is_archive_directory(current):
+            return True
+        current = current.parent
+    return False
+
+
 def find_organization_directories(input_path: Path) -> Dict[str, Path]:
     """Find all organization directories and their identifiers."""
     org_dirs = {}
 
     for item in input_path.iterdir():
         if item.is_dir() and is_organization_directory(item):
+            # Skip archive directories
+            if is_archive_directory(item):
+                continue
+
+            # Skip directories under archive directories
+            if is_under_archive_directory(item, input_path):
+                continue
+
             # Check if the organization directory name is directly an identifier
             # (e.g., "ilmassa")
             org_dirs[item.name] = item
@@ -78,14 +111,18 @@ def find_organization_directories(input_path: Path) -> Dict[str, Path]:
 
             # Check subdirectories of organization directory
             for subdir in item.iterdir():
-                if subdir.is_dir():
-                    # Subdirectory name as identifier
-                    org_dirs[subdir.name] = item
+                if subdir.is_dir() and is_organization_directory(subdir):
+                    # Skip if subdirectory is an archive or under an archive
+                    if is_archive_directory(subdir) or is_under_archive_directory(subdir, input_path):
+                        continue
 
-                    # Subdirectory identifier with dashes
+                    # Subdirectory name as identifier - map to the subdirectory itself
+                    org_dirs[subdir.name] = subdir
+
+                    # Subdirectory identifier with dashes - map to the subdirectory itself
                     sub_identifier = extract_identifier(subdir.name)
                     if sub_identifier:
-                        org_dirs[sub_identifier] = item
+                        org_dirs[sub_identifier] = subdir
 
     return org_dirs
 
