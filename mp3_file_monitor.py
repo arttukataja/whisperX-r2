@@ -33,7 +33,6 @@ class MP3Monitor:
         self.current_language = None
         self.model_a = None
         self.metadata = None
-        self.processed_files = set()  # Keep track of processed files
         self.setup_whisperx()
 
     def detect_language_from_filename(self, filename):
@@ -313,10 +312,8 @@ class MP3Monitor:
                 mp3_files = list(input_path.glob("*.mp3"))
 
                 for mp3_file in mp3_files:
-                    if mp3_file.name not in self.processed_files:
-                        logger.info(f"New MP3 file detected: {mp3_file.name}")
-                        self.process_mp3_file(str(mp3_file))
-                        self.processed_files.add(mp3_file.name)
+                    logger.info(f"New MP3 file detected: {mp3_file.name}")
+                    self.process_mp3_file(str(mp3_file))
 
                 time.sleep(5)  # Polling interval
 
