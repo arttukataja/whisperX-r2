@@ -31,7 +31,17 @@ logger = logging.getLogger(__name__)
 class MP3Handler(FileSystemEventHandler):
     def __init__(self):
         self.processing_lock = threading.Lock()
+        self.current_language = None
+        self.model_a = None
+        self.metadata = None
         self.setup_whisperx()
+
+    def detect_language_from_filename(self, filename):
+        """Detect language from filename patterns"""
+        filename_lower = filename.lower()
+        if "-en.mp3" in filename_lower or "-en-" in filename_lower:
+            return "en"
+        return "fi"  # Default to Finnish
 
     def setup_whisperx(self):
         """Initialize WhisperX models"""
@@ -55,18 +65,30 @@ class MP3Handler(FileSystemEventHandler):
             self.model = whisperx.load_model("large-v3", self.device, compute_type=self.compute_type)
             logger.info("✓ Whisper model loaded successfully")
 
-            # Load alignment model for Finnish
-            self.model_a, self.metadata = whisperx.load_align_model(language_code="fi", device=self.device)
-            logger.info("✓ Alignment model loaded for Finnish")
-
             # Load diarization model
             hftoken = os.getenv("HF_TOKEN")
             self.diarize_model = whisperx.diarize.DiarizationPipeline(use_auth_token=hftoken, device=self.device)
             logger.info("✓ Diarization model loaded")
 
+            # Note: Alignment model will be loaded dynamically based on detected language
+
         except Exception as e:
             logger.error(f"Error loading models: {e}")
             raise
+
+    def load_alignment_model(self, language_code):
+        """Load alignment model for specific language"""
+        if self.current_language != language_code:
+            logger.info(f"Loading alignment model for language: {language_code}")
+            try:
+                self.model_a, self.metadata = whisperx.load_align_model(language_code=language_code, device=self.device)
+                self.current_language = language_code
+                logger.info(f"✓ Alignment model loaded for {language_code}")
+            except Exception as e:
+                logger.error(f"Error loading alignment model for {language_code}: {e}")
+                raise
+        else:
+            logger.info(f"Alignment model for {language_code} already loaded")
 
     def on_created(self, event):
         if not event.is_directory and event.src_path.lower().endswith('.mp3'):
@@ -95,6 +117,13 @@ class MP3Handler(FileSystemEventHandler):
                     logger.warning(f"File {file_path} no longer exists")
                     return
 
+                # Detect language from filename
+                language_code = self.detect_language_from_filename(file_path.name)
+                logger.info(f"Detected language: {language_code}")
+
+                # Load alignment model for the detected language
+                self.load_alignment_model(language_code)
+
                 # Transcribe the file
                 self.transcribe_file(new_mp3_path, target_dir)
 
@@ -121,10 +150,10 @@ class MP3Handler(FileSystemEventHandler):
             audio_duration = len(audio) / 16000
             logger.info(f"Audio loaded: {audio_duration:.2f} seconds duration")
 
-            # Transcribe
-            logger.info("Transcribing audio...")
+            # Transcribe with detected language
+            logger.info(f"Transcribing audio (language: {self.current_language})...")
             transcribe_start = time.time()
-            result = self.model.transcribe(audio, batch_size=self.batch_size, language="fi")
+            result = self.model.transcribe(audio, batch_size=self.batch_size, language=self.current_language)
             transcribe_time = time.time() - transcribe_start
             logger.info(f"Transcription completed in {transcribe_time:.2f}s ({len(result['segments'])} segments)")
 
@@ -177,6 +206,7 @@ class MP3Handler(FileSystemEventHandler):
         with open(transcript_file, 'w', encoding='utf-8') as f:
             f.write(f"Diarized Transcript - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Audio file: {mp3_path.name}\n")
+            f.write(f"Language: {self.current_language}\n")
             f.write(f"Device: {self.device}\n")
             f.write(f"Duration: {audio_duration:.2f} seconds\n")
             f.write(f"Processing time: {processing_time:.2f} seconds\n")
@@ -202,6 +232,9 @@ def main():
     logger.info("MP3 FILE MONITOR AND TRANSCRIPTION SYSTEM")
     logger.info("=" * 50)
     logger.info(f"Monitoring directory: {input_dir.absolute()}")
+    logger.info("Language detection:")
+    logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
+    logger.info("  - All other files: Finnish transcription (default)")
     logger.info("Drop MP3 files into ./input directory to start transcription")
     logger.info("Press Ctrl+C to stop monitoring")
 
