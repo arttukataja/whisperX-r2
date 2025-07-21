@@ -8,9 +8,13 @@ Tämä projekti on bugikorjattu versio alkuperäisestä [WhisperX projektista](h
 
 Oletuksena skripti kuuntelee `./input/` hakemistoa, mutta voit määrittää minkä tahansa hakemiston käynnistysparametrilla `--input-dir`.
 
-Skripti tukee NVidian GPU:ta, jos ympäristöön on asennettu CUDA. 
-
 Transkripti tehdään oletuksella suomen kielellä. Jos mp3-tiedoston nimessä on merkkijono -en- tai -en.mp3, tehdään transkripti englanniksi.
+
+# GPU-tuki
+
+Skripti tukee NVidian GPU:ta, jos ympäristöön on asennettu CUDA. NVidia RTX 4090 transkriptin nopeus on 30x realiaikaiseen äänen verrattuna. 
+
+MacbookPro M4 Maxilla transkriptin nopeus on 0,8x realiaikaiseen verrattuna.
 
 # Asennusohje (MacOS ja Linux)
 
