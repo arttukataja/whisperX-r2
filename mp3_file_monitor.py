@@ -229,17 +229,9 @@ class MP3Monitor:
         logger.info(f"JSON transcript saved to {json_file}")
 
     def save_markdown_transcript(self, result, mp3_path, markdown_file, audio_duration, start_time):
-        """Save transcript in markdown format grouped by speakers"""
+        """Save transcript in markdown format in chronological order"""
         processing_time = time.time() - start_time
         speed_ratio = audio_duration / processing_time
-
-        # Group segments by speaker
-        speaker_segments = {}
-        for segment in result["segments"]:
-            speaker = segment.get('speaker', 'UNKNOWN')
-            if speaker not in speaker_segments:
-                speaker_segments[speaker] = []
-            speaker_segments[speaker].append(segment)
 
         with open(markdown_file, 'w', encoding='utf-8') as f:
             # Write header information
@@ -253,22 +245,24 @@ class MP3Monitor:
             f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n\n")
             f.write("---\n\n")
 
-            # Write segments grouped by speaker
-            for speaker in sorted(speaker_segments.keys()):
-                segments = speaker_segments[speaker]
+            # Write segments in chronological order
+            current_speaker = None
+            for i, segment in enumerate(result["segments"]):
+                speaker = segment.get('speaker', 'UNKNOWN')
+                start_time_seg = segment['start']
+                end_time_seg = segment['end']
+                text = segment['text'].strip()
 
-                # Get first and last timestamps for this speaker
-                first_timestamp = segments[0]['start']
-                last_timestamp = segments[-1]['end']
+                # Add speaker header when speaker changes
+                if speaker != current_speaker:
+                    if current_speaker is not None:  # Add separator between speakers
+                        f.write("\n")
+                    f.write(f"## {speaker} ({start_time_seg:.2f}s)\n\n")
+                    current_speaker = speaker
 
-                f.write(f"## {speaker} ({first_timestamp:.2f}s-{last_timestamp:.2f}s):\n\n")
-
-                for segment in segments:
-                    text = segment['text'].strip()
-                    if text:  # Only write non-empty text
-                        f.write(f"{text}\n\n")
-
-                f.write("---\n\n")
+                # Write the segment text
+                if text:  # Only write non-empty text
+                    f.write(f"{text}\n\n")
 
     def save_json_transcript(self, result, mp3_path, json_file, audio_duration, start_time):
         """Save transcript in JSON format"""
