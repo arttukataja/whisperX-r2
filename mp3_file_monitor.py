@@ -222,6 +222,19 @@ class MP3Handler(FileSystemEventHandler):
 
         logger.info(f"Transcript saved to {transcript_file}")
 
+    def process_existing_files(self, input_dir):
+        """Process any existing MP3 files in the input directory"""
+        input_path = Path(input_dir)
+        mp3_files = list(input_path.glob("*.mp3"))
+
+        if mp3_files:
+            logger.info(f"Found {len(mp3_files)} existing MP3 file(s) to process:")
+            for mp3_file in mp3_files:
+                logger.info(f"  - {mp3_file.name}")
+                self.process_mp3_file(str(mp3_file))
+        else:
+            logger.info("No existing MP3 files found in input directory")
+
 def main():
     """Main function to start file monitoring"""
     # Ensure input directory exists
@@ -245,6 +258,9 @@ def main():
 
     # Start monitoring
     observer.start()
+
+    # Process any existing files in the input directory
+    event_handler.process_existing_files(input_dir)
 
     try:
         while True:
