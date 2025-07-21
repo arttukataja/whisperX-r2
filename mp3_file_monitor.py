@@ -8,6 +8,7 @@ import os
 import time
 import shutil
 import threading
+import json
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -201,6 +202,7 @@ class MP3Handler(FileSystemEventHandler):
         base_filename = mp3_path.stem
         transcript_file = output_dir / f"{base_filename}.txt"
         markdown_file = output_dir / f"{base_filename}.md"
+        json_file = output_dir / f"{base_filename}.json"
 
         processing_time = time.time() - start_time
         speed_ratio = audio_duration / processing_time
@@ -226,8 +228,12 @@ class MP3Handler(FileSystemEventHandler):
         # Save .md format (new)
         self.save_markdown_transcript(result, mp3_path, markdown_file, audio_duration, start_time)
 
+        # Save .json format (new)
+        self.save_json_transcript(result, mp3_path, json_file, audio_duration, start_time)
+
         logger.info(f"Transcript saved to {transcript_file}")
         logger.info(f"Markdown transcript saved to {markdown_file}")
+        logger.info(f"JSON transcript saved to {json_file}")
 
     def save_markdown_transcript(self, result, mp3_path, markdown_file, audio_duration, start_time):
         """Save transcript in markdown format grouped by speakers"""
@@ -270,6 +276,26 @@ class MP3Handler(FileSystemEventHandler):
                         f.write(f"{text}\n\n")
 
                 f.write("---\n\n")
+
+    def save_json_transcript(self, result, mp3_path, json_file, audio_duration, start_time):
+        """Save transcript in JSON format"""
+        processing_time = time.time() - start_time
+        speed_ratio = audio_duration / processing_time
+
+        # Prepare JSON data
+        json_data = {
+            "audio_file": mp3_path.name,
+            "language": self.current_language,
+            "device": self.device,
+            "duration": audio_duration,
+            "processing_time": processing_time,
+            "speed_ratio": speed_ratio,
+            "segments": result["segments"],
+            "generated": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
 
     def process_existing_files(self, input_dir):
         """Process any existing MP3 files in the input directory"""
