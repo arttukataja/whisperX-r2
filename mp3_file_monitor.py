@@ -242,7 +242,7 @@ class MP3Monitor:
             f.write(f"**Processing time:** {processing_time:.2f} seconds  \n")
             f.write(f"**Speed ratio:** {speed_ratio:.2f}x  \n")
             f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n\n")
-            f.write("---\n\n")
+            f.write("---")
 
             # Write segments in chronological order
             current_speaker = None
@@ -254,9 +254,8 @@ class MP3Monitor:
 
                 # Add speaker header when speaker changes
                 if speaker != current_speaker:
-                    if current_speaker is not None:  # Add separator between speakers
-                        f.write("\n")
-                    f.write(f"## {speaker} ({start_time_seg:.2f}s)\n\n")
+                    start_time_str = time.strftime('%H:%M:%S', time.gmtime(start_time_seg))
+                    f.write(f"\n\n## {speaker} ({start_time_str})\n\n")
                     current_speaker = speaker
 
                 # Write the segment text
