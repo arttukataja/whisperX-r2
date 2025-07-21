@@ -197,12 +197,15 @@ class MP3Handler(FileSystemEventHandler):
 
     def save_transcript(self, result, mp3_path, output_dir, audio_duration, start_time):
         """Save transcript to file"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        transcript_file = output_dir / f"transcript_{timestamp}.txt"
+        # Use base filename without extension for output files
+        base_filename = mp3_path.stem
+        transcript_file = output_dir / f"{base_filename}.txt"
+        markdown_file = output_dir / f"{base_filename}.md"
 
         processing_time = time.time() - start_time
         speed_ratio = audio_duration / processing_time
 
+        # Save .txt format (existing)
         with open(transcript_file, 'w', encoding='utf-8') as f:
             f.write(f"Diarized Transcript - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Audio file: {mp3_path.name}\n")
@@ -220,7 +223,53 @@ class MP3Handler(FileSystemEventHandler):
                 text = segment['text']
                 f.write(f"[{i + 1:03d}] {speaker} ({start_time_seg:.2f}s-{end_time_seg:.2f}s): {text}\n")
 
+        # Save .md format (new)
+        self.save_markdown_transcript(result, mp3_path, markdown_file, audio_duration, start_time)
+
         logger.info(f"Transcript saved to {transcript_file}")
+        logger.info(f"Markdown transcript saved to {markdown_file}")
+
+    def save_markdown_transcript(self, result, mp3_path, markdown_file, audio_duration, start_time):
+        """Save transcript in markdown format grouped by speakers"""
+        processing_time = time.time() - start_time
+        speed_ratio = audio_duration / processing_time
+
+        # Group segments by speaker
+        speaker_segments = {}
+        for segment in result["segments"]:
+            speaker = segment.get('speaker', 'UNKNOWN')
+            if speaker not in speaker_segments:
+                speaker_segments[speaker] = []
+            speaker_segments[speaker].append(segment)
+
+        with open(markdown_file, 'w', encoding='utf-8') as f:
+            # Write header information
+            f.write(f"# Diarized Transcript\n\n")
+            f.write(f"**Audio file:** {mp3_path.name}  \n")
+            f.write(f"**Language:** {self.current_language}  \n")
+            f.write(f"**Device:** {self.device}  \n")
+            f.write(f"**Duration:** {audio_duration:.2f} seconds  \n")
+            f.write(f"**Processing time:** {processing_time:.2f} seconds  \n")
+            f.write(f"**Speed ratio:** {speed_ratio:.2f}x  \n")
+            f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n\n")
+            f.write("---\n\n")
+
+            # Write segments grouped by speaker
+            for speaker in sorted(speaker_segments.keys()):
+                segments = speaker_segments[speaker]
+
+                # Get first and last timestamps for this speaker
+                first_timestamp = segments[0]['start']
+                last_timestamp = segments[-1]['end']
+
+                f.write(f"## {speaker} ({first_timestamp:.2f}s-{last_timestamp:.2f}s):\n\n")
+
+                for segment in segments:
+                    text = segment['text'].strip()
+                    if text:  # Only write non-empty text
+                        f.write(f"{text}\n\n")
+
+                f.write("---\n\n")
 
     def process_existing_files(self, input_dir):
         """Process any existing MP3 files in the input directory"""
