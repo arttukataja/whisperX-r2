@@ -10,8 +10,6 @@ import shutil
 import threading
 import json
 from pathlib import Path
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 import whisperx
 import gc
 import torch
@@ -29,12 +27,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class MP3Handler(FileSystemEventHandler):
+class MP3Monitor:
     def __init__(self):
         self.processing_lock = threading.Lock()
         self.current_language = None
         self.model_a = None
         self.metadata = None
+        self.processed_files = set()  # Keep track of processed files
         self.setup_whisperx()
 
     def detect_language_from_filename(self, filename):
@@ -90,12 +89,6 @@ class MP3Handler(FileSystemEventHandler):
                 raise
         else:
             logger.info(f"Alignment model for {language_code} already loaded")
-
-    def on_created(self, event):
-        if not event.is_directory and event.src_path.lower().endswith('.mp3'):
-            # Small delay to ensure file is fully written
-            time.sleep(2)
-            self.process_mp3_file(event.src_path)
 
     def process_mp3_file(self, file_path):
         """Process a single MP3 file"""
@@ -310,6 +303,34 @@ class MP3Handler(FileSystemEventHandler):
         else:
             logger.info("No existing MP3 files found in input directory")
 
+    def monitor_directory(self, input_dir):
+        """Monitor the input directory for new MP3 files"""
+        logger.info(f"Monitoring directory: {input_dir.absolute()}")
+        logger.info("Language detection:")
+        logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
+        logger.info("  - All other files: Finnish transcription (default)")
+        logger.info("Drop MP3 files into ./input directory to start transcription")
+        logger.info("Press Ctrl+C to stop monitoring")
+
+        try:
+            while True:
+                # Check for new MP3 files
+                input_path = Path(input_dir)
+                mp3_files = list(input_path.glob("*.mp3"))
+
+                for mp3_file in mp3_files:
+                    if mp3_file.name not in self.processed_files:
+                        logger.info(f"New MP3 file detected: {mp3_file.name}")
+                        self.process_mp3_file(str(mp3_file))
+                        self.processed_files.add(mp3_file.name)
+
+                time.sleep(5)  # Polling interval
+
+        except KeyboardInterrupt:
+            logger.info("Stopping directory monitor...")
+        except Exception as e:
+            logger.error(f"Error monitoring directory: {e}")
+
 def main():
     """Main function to start file monitoring"""
     # Ensure input directory exists
@@ -319,32 +340,16 @@ def main():
     logger.info("=" * 50)
     logger.info("MP3 FILE MONITOR AND TRANSCRIPTION SYSTEM")
     logger.info("=" * 50)
-    logger.info(f"Monitoring directory: {input_dir.absolute()}")
-    logger.info("Language detection:")
-    logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
-    logger.info("  - All other files: Finnish transcription (default)")
-    logger.info("Drop MP3 files into ./input directory to start transcription")
-    logger.info("Press Ctrl+C to stop monitoring")
 
     # Create event handler and observer
-    event_handler = MP3Handler()
-    observer = Observer()
-    observer.schedule(event_handler, str(input_dir), recursive=False)
-
-    # Start monitoring
-    observer.start()
+    event_handler = MP3Monitor()
 
     # Process any existing files in the input directory
     event_handler.process_existing_files(input_dir)
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logger.info("Stopping file monitor...")
-        observer.stop()
+    # Start monitoring
+    event_handler.monitor_directory(input_dir)
 
-    observer.join()
     logger.info("File monitor stopped")
 
 if __name__ == "__main__":
