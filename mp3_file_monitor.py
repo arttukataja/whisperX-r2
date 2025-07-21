@@ -262,6 +262,8 @@ class MP3Monitor:
 
                 # Write the segment text
                 if text:  # Only write non-empty text
+                    if not text.endswith(" "):
+                        text += " "
                     f.write(f"{text}")
 
     def save_json_transcript(self, result, mp3_path, json_file, audio_duration, start_time):
