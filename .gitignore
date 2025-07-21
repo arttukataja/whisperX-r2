@@ -172,4 +172,4 @@ cython_debug/
 .pypirc
 
 output/
-./input
+input
