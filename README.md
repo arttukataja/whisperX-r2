@@ -4,7 +4,9 @@ Tämä projekti on bugikorjattu versio alkuperäisestä [WhisperX projektista](h
 
 # Serveri mp3_file_monitor.py
 
-`mp3_file_monitor.py`-skripti toimii serverinä, joka kuuntelee `./input/` hakemistoa ja tuottaa mp3-tiedostoista transkriptit alihakemistoihin `./input/[mp3-nimi]/`. Input-alihakemisto kannattaa osoittaa symbolisella linkillä haluttuun mp3-tiedostojen hakemistoon.
+`mp3_file_monitor.py`-skripti toimii serverinä, joka kuuntelee input-hakemistoa ja tuottaa mp3-tiedostoista transkriptit alihakemistoihin `[input-hakemisto]/[mp3-nimi]/`. 
+
+Oletuksena skripti kuuntelee `./input/` hakemistoa, mutta voit määrittää minkä tahansa hakemiston käynnistysparametrilla `--input-dir`.
 
 Skripti tukee NVidian GPU:ta, jos ympäristöön on asennettu CUDA. 
 
@@ -23,4 +25,24 @@ Transkripti tehdään oletuksella suomen kielellä. Jos mp3-tiedoston nimessä o
 
 1. Siirry projektin juurikansioon
 2. Aktivoi virtuaaliympäristö `source .venv/bin/activate`
-3. Aja serveri `python mp3_file_monitor.py`
+3. Aja serveri jommalla kummalla tavalla:
+   - Oletushakemisto: `python mp3_file_monitor.py`
+   - Oma hakemisto: `python mp3_file_monitor.py --input-dir /polku/äänitiedostoihin`
+
+## Käynnistysparametrit
+
+- `--input-dir` : Määrittää input-hakemiston polun. Oletusarvo on `./input`
+
+## Esimerkkejä
+
+```bash
+# Käytä oletushakemistoa ./input
+python mp3_file_monitor.py
+
+# Käytä omaa hakemistoa
+python mp3_file_monitor.py --input-dir /Users/username/audio-files
+
+# Käytä suhteellista polkua
+python mp3_file_monitor.py --input-dir ../my-audio-files
+```
+

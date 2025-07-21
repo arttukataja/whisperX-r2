@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 MP3 File Monitor and Transcription System
-Monitors ./input directory for MP3 files and transcribes them using WhisperX
+Monitors input directory for MP3 files and transcribes them using WhisperX
 """
 
 import os
@@ -9,6 +9,7 @@ import time
 import shutil
 import threading
 import json
+import argparse
 from pathlib import Path
 import whisperx
 import gc
@@ -28,7 +29,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class MP3Monitor:
-    def __init__(self):
+    def __init__(self, input_dir="./input"):
+        self.input_dir = Path(input_dir)
         self.processing_lock = threading.Lock()
         self.current_language = None
         self.model_a = None
@@ -96,9 +98,9 @@ class MP3Monitor:
                 file_path = Path(file_path)
                 logger.info(f"Processing MP3 file: {file_path.name}")
 
-                # Create directory structure: ./input/[filename]/
+                # Create directory structure: [input_dir]/[filename]/
                 filename_base = file_path.stem  # filename without extension
-                target_dir = Path("./input") / filename_base
+                target_dir = self.input_dir / filename_base
                 target_dir.mkdir(parents=True, exist_ok=True)
 
                 # Move MP3 file to target directory
@@ -301,7 +303,7 @@ class MP3Monitor:
         logger.info("Language detection:")
         logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
-        logger.info("Drop MP3 files into ./input directory to start transcription")
+        logger.info(f"Drop MP3 files into {input_dir} directory to start transcription")
         logger.info("Press Ctrl+C to stop monitoring")
 
         try:
@@ -323,16 +325,26 @@ class MP3Monitor:
 
 def main():
     """Main function to start file monitoring"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="MP3 File Monitor and Transcription System")
+    parser.add_argument(
+        "--input-dir",
+        type=str,
+        default="./input",
+        help="Input directory to monitor for MP3 files (default: ./input)"
+    )
+    args = parser.parse_args()
+
     # Ensure input directory exists
-    input_dir = Path("./input")
-    input_dir.mkdir(exist_ok=True)
+    input_dir = Path(args.input_dir)
+    input_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 50)
     logger.info("MP3 FILE MONITOR AND TRANSCRIPTION SYSTEM")
     logger.info("=" * 50)
 
     # Create event handler and observer
-    event_handler = MP3Monitor()
+    event_handler = MP3Monitor(input_dir=args.input_dir)
 
     # Process any existing files in the input directory
     event_handler.process_existing_files(input_dir)
