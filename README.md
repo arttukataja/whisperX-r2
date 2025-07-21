@@ -4,7 +4,9 @@ Tämä projekti on bugikorjattu versio alkuperäisestä [WhisperX projektista](h
 
 # Serveri mp3_file_monitor.py
 
-mp3_file_monitor.py-skripti toimii serverinä, joka kuuntelee ./input/ hakemistoa ja tuottaa mp3-tiedostoista transkriptit alihakemistoihin ./input/<mp3-nimi>/. Skripti tukee CUDAa, jos se on asennettu.
+`mp3_file_monitor.py`-skripti toimii serverinä, joka kuuntelee `./input/` hakemistoa ja tuottaa mp3-tiedostoista transkriptit alihakemistoihin `./input/[mp3-nimi]/`. Input-alihakemisto kannattaa osoittaa symbolisella linkillä haluttuun mp3-tiedostojen hakemistoon.
+
+Skripti tukee NVidian GPU:ta, jos ympäristöön on asennettu CUDA. 
 
 Transkripti tehdään oletuksella suomen kielellä. Jos mp3-tiedoston nimessä on merkkijono -en- tai -en.mp3, tehdään transkripti englanniksi.
 
