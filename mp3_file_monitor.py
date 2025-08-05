@@ -35,6 +35,7 @@ class MP3Monitor:
         self.current_language = None
         self.model_a = None
         self.metadata = None
+        self.file_sizes = {}  # Track file sizes to detect when writing is complete
         self.setup_whisperx()
 
     def detect_language_from_filename(self, filename):
@@ -306,6 +307,7 @@ class MP3Monitor:
         logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
         logger.info(f"Drop MP3 files into {input_dir} directory to start transcription")
+        logger.info("Files will be processed only after they are stable (not growing) for 10 seconds")
         logger.info("Press Ctrl+C to stop monitoring")
 
         try:
@@ -315,8 +317,17 @@ class MP3Monitor:
                 mp3_files = list(input_path.glob("*.mp3"))
 
                 for mp3_file in mp3_files:
-                    logger.info(f"New MP3 file detected: {mp3_file.name}")
-                    self.process_mp3_file(str(mp3_file))
+                    # Check if file is stable before processing
+                    if self.is_file_stable(mp3_file):
+                        logger.info(f"File is stable, processing: {mp3_file.name}")
+                        self.process_mp3_file(str(mp3_file))
+                    else:
+                        # File detected but not stable yet
+                        if str(mp3_file) not in self.file_sizes:
+                            logger.info(f"New MP3 file detected, waiting for stability: {mp3_file.name}")
+                        else:
+                            current_size = mp3_file.stat().st_size
+                            logger.debug(f"File {mp3_file.name} still growing (size: {current_size} bytes)")
 
                 time.sleep(5)  # Polling interval
 
@@ -324,6 +335,45 @@ class MP3Monitor:
             logger.info("Stopping directory monitor...")
         except Exception as e:
             logger.error(f"Error monitoring directory: {e}")
+
+    def is_file_stable(self, file_path, stability_duration=10):
+        """
+        Check if a file is stable (not growing) by monitoring its size.
+        Returns True if file size hasn't changed for stability_duration seconds.
+        """
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            return False
+
+        current_size = file_path.stat().st_size
+
+        # If we haven't seen this file before, start tracking it
+        if str(file_path) not in self.file_sizes:
+            self.file_sizes[str(file_path)] = {
+                'size': current_size,
+                'last_change': time.time()
+            }
+            return False
+
+        # Check if size has changed
+        last_info = self.file_sizes[str(file_path)]
+        if current_size != last_info['size']:
+            # Size changed, update tracking info
+            self.file_sizes[str(file_path)] = {
+                'size': current_size,
+                'last_change': time.time()
+            }
+            return False
+
+        # Size hasn't changed, check if enough time has passed
+        time_since_change = time.time() - last_info['last_change']
+        if time_since_change >= stability_duration:
+            # File is stable, we can remove it from tracking
+            del self.file_sizes[str(file_path)]
+            return True
+
+        return False
 
 def main():
     """Main function to start file monitoring"""
