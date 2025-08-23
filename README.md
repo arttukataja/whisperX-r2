@@ -2,13 +2,13 @@
 
 Tämä projekti on bugikorjattu versio alkuperäisestä [WhisperX projektista](https://github.com/m-bain/whisperX), jossa pitkät suomenkieliset äänitiedostot toimivat.
 
-# Serveri mp3_file_monitor.py
+# Serveri audio_file_monitor.py
 
-`mp3_file_monitor.py`-skripti toimii serverinä, joka kuuntelee input-hakemistoa ja tuottaa mp3-tiedostoista transkriptit alihakemistoihin `[input-hakemisto]/[mp3-nimi]/`. 
+`audio_file_monitor.py`-skripti toimii serverinä, joka kuuntelee input-hakemistoa ja tuottaa mp3- ja m4a-tiedostoista transkriptit alihakemistoihin `[input-hakemisto]/[äänitiedosto-nimi]/`. 
 
 Oletuksena skripti kuuntelee `./input/` hakemistoa, mutta voit määrittää minkä tahansa hakemiston käynnistysparametrilla `--input-dir`.
 
-Transkripti tehdään oletuksella suomen kielellä. Jos mp3-tiedoston nimessä on merkkijono -en- tai -en.mp3, tehdään transkripti englanniksi.
+Transkripti tehdään oletuksella suomen kielellä. Jos äänitiedoston nimessä on merkkijono -en- tai -en.mp3/-en.m4a, tehdään transkripti englanniksi.
 
 # GPU-tuki
 
@@ -30,8 +30,8 @@ MacbookPro M4 Maxilla transkriptin nopeus on 0,8x realiaikaiseen verrattuna.
 1. Siirry projektin juurikansioon
 2. Aktivoi virtuaaliympäristö `source .venv/bin/activate`
 3. Aja serveri jommalla kummalla tavalla:
-   - Oletushakemisto: `python mp3_file_monitor.py`
-   - Oma hakemisto: `python mp3_file_monitor.py --input-dir /polku/äänitiedostoihin`
+   - Oletushakemisto: `python audio_file_monitor.py`
+   - Oma hakemisto: `python audio_file_monitor.py --input-dir /polku/äänitiedostoihin`
 
 ## Käynnistysparametrit
 
@@ -41,12 +41,11 @@ MacbookPro M4 Maxilla transkriptin nopeus on 0,8x realiaikaiseen verrattuna.
 
 ```bash
 # Käytä oletushakemistoa ./input
-python mp3_file_monitor.py
+python audio_file_monitor.py
 
 # Käytä omaa hakemistoa
-python mp3_file_monitor.py --input-dir /Users/username/audio-files
+python audio_file_monitor.py --input-dir /Users/username/audio-files
 
 # Käytä suhteellista polkua
-python mp3_file_monitor.py --input-dir ../my-audio-files
+python audio_file_monitor.py --input-dir ../my-audio-files
 ```
-

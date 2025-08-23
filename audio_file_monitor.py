@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-MP3 File Monitor and Transcription System
-Monitors input directory for MP3 files and transcribes them using WhisperX
+Audio File Monitor and Transcription System
+Monitors input directory for MP3 and M4A files and transcribes them using WhisperX
 """
 
 import os
@@ -22,13 +22,13 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('mp3_file_monitor.log'),
+        logging.FileHandler('audio_file_monitor.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-class MP3Monitor:
+class AudioFileMonitor:
     def __init__(self, input_dir="./input"):
         self.input_dir = Path(input_dir)
         self.processing_lock = threading.Lock()
@@ -36,12 +36,13 @@ class MP3Monitor:
         self.model_a = None
         self.metadata = None
         self.file_sizes = {}  # Track file sizes to detect when writing is complete
+        self.supported_extensions = {'.mp3', '.m4a'}
         self.setup_whisperx()
 
     def detect_language_from_filename(self, filename):
         """Detect language from filename patterns"""
         filename_lower = filename.lower()
-        if "-en.mp3" in filename_lower or "-en-" in filename_lower:
+        if "-en.mp3" in filename_lower or "-en.m4a" in filename_lower or "-en-" in filename_lower:
             return "en"
         return "fi"  # Default to Finnish
 
@@ -92,22 +93,22 @@ class MP3Monitor:
         else:
             logger.info(f"Alignment model for {language_code} already loaded")
 
-    def process_mp3_file(self, file_path):
-        """Process a single MP3 file"""
+    def process_audio_file(self, file_path):
+        """Process a single audio file (MP3 or M4A)"""
         with self.processing_lock:
             try:
                 file_path = Path(file_path)
-                logger.info(f"Processing MP3 file: {file_path.name}")
+                logger.info(f"Processing audio file: {file_path.name}")
 
                 # Create directory structure: [input_dir]/[filename]/
                 filename_base = file_path.stem  # filename without extension
                 target_dir = self.input_dir / filename_base
                 target_dir.mkdir(parents=True, exist_ok=True)
 
-                # Move MP3 file to target directory
-                new_mp3_path = target_dir / file_path.name
+                # Move audio file to target directory
+                new_audio_path = target_dir / file_path.name
                 if file_path.exists():
-                    shutil.move(str(file_path), str(new_mp3_path))
+                    shutil.move(str(file_path), str(new_audio_path))
                     logger.info(f"Moved {file_path.name} to {target_dir}")
                 else:
                     logger.warning(f"File {file_path} no longer exists")
@@ -121,7 +122,7 @@ class MP3Monitor:
                 self.load_alignment_model(language_code)
 
                 # Transcribe the file
-                self.transcribe_file(new_mp3_path, target_dir)
+                self.transcribe_file(new_audio_path, target_dir)
 
             except Exception as e:
                 logger.error(f"Error processing {file_path}: {e}")
@@ -133,16 +134,16 @@ class MP3Monitor:
                         f.write(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                         f.write(f"Error: {str(e)}\n")
 
-    def transcribe_file(self, mp3_path, output_dir):
-        """Transcribe MP3 file using WhisperX pipeline"""
+    def transcribe_file(self, audio_path, output_dir):
+        """Transcribe audio file using WhisperX pipeline"""
         start_time = time.time()
 
-        logger.info(f"Starting transcription of {mp3_path.name}")
+        logger.info(f"Starting transcription of {audio_path.name}")
 
         try:
             # Load audio
             logger.info("Loading audio...")
-            audio = whisperx.load_audio(str(mp3_path))
+            audio = whisperx.load_audio(str(audio_path))
             audio_duration = len(audio) / 16000
             logger.info(f"Audio loaded: {audio_duration:.2f} seconds duration")
 
@@ -175,7 +176,7 @@ class MP3Monitor:
             logger.info(f"Speaker assignment completed in {assign_time:.2f}s")
 
             # Save results
-            self.save_transcript(result, mp3_path, output_dir, audio_duration, start_time)
+            self.save_transcript(result, audio_path, output_dir, audio_duration, start_time)
 
             # Cleanup
             gc.collect()
@@ -184,17 +185,17 @@ class MP3Monitor:
 
             processing_time = time.time() - start_time
             speed_ratio = audio_duration / processing_time
-            logger.info(f"✓ Transcription completed for {mp3_path.name}")
+            logger.info(f"✓ Transcription completed for {audio_path.name}")
             logger.info(f"Processing time: {processing_time:.2f}s (speed ratio: {speed_ratio:.2f}x)")
 
         except Exception as e:
-            logger.error(f"Error during transcription of {mp3_path.name}: {e}")
+            logger.error(f"Error during transcription of {audio_path.name}: {e}")
             raise
 
-    def save_transcript(self, result, mp3_path, output_dir, audio_duration, start_time):
+    def save_transcript(self, result, audio_path, output_dir, audio_duration, start_time):
         """Save transcript to file"""
         # Use base filename without extension for output files
-        base_filename = mp3_path.stem
+        base_filename = audio_path.stem
         transcript_file = output_dir / f"{base_filename}.txt"
         markdown_file = output_dir / f"{base_filename}.md"
         json_file = output_dir / f"{base_filename}.json"
@@ -205,7 +206,7 @@ class MP3Monitor:
         # Save .txt format (existing)
         with open(transcript_file, 'w', encoding='utf-8') as f:
             f.write(f"Diarized Transcript - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Audio file: {mp3_path.name}\n")
+            f.write(f"Audio file: {audio_path.name}\n")
             f.write(f"Language: {self.current_language}\n")
             f.write(f"Device: {self.device}\n")
             f.write(f"Duration: {audio_duration:.2f} seconds\n")
@@ -221,16 +222,16 @@ class MP3Monitor:
                 f.write(f"[{i + 1:03d}] {speaker} ({start_time_seg:.2f}s-{end_time_seg:.2f}s): {text}\n")
 
         # Save .md format (new)
-        self.save_markdown_transcript(result, mp3_path, markdown_file, audio_duration, start_time)
+        self.save_markdown_transcript(result, audio_path, markdown_file, audio_duration, start_time)
 
         # Save .json format (new)
-        self.save_json_transcript(result, mp3_path, json_file, audio_duration, start_time)
+        self.save_json_transcript(result, audio_path, json_file, audio_duration, start_time)
 
         logger.info(f"Transcript saved to {transcript_file}")
         logger.info(f"Markdown transcript saved to {markdown_file}")
         logger.info(f"JSON transcript saved to {json_file}")
 
-    def save_markdown_transcript(self, result, mp3_path, markdown_file, audio_duration, start_time):
+    def save_markdown_transcript(self, result, audio_path, markdown_file, audio_duration, start_time):
         """Save transcript in markdown format in chronological order"""
         processing_time = time.time() - start_time
         speed_ratio = audio_duration / processing_time
@@ -238,7 +239,7 @@ class MP3Monitor:
         with open(markdown_file, 'w', encoding='utf-8') as f:
             # Write header information
             f.write(f"# Diarized Transcript\n\n")
-            f.write(f"**Audio file:** {mp3_path.name}  \n")
+            f.write(f"**Audio file:** {audio_path.name}  \n")
             f.write(f"**Language:** {self.current_language}  \n")
             f.write(f"**Device:** {self.device}  \n")
             f.write(f"**Duration:** {audio_duration:.2f} seconds  \n")
@@ -267,14 +268,14 @@ class MP3Monitor:
                         text += " "
                     f.write(f"{text}")
 
-    def save_json_transcript(self, result, mp3_path, json_file, audio_duration, start_time):
+    def save_json_transcript(self, result, audio_path, json_file, audio_duration, start_time):
         """Save transcript in JSON format"""
         processing_time = time.time() - start_time
         speed_ratio = audio_duration / processing_time
 
         # Prepare JSON data
         json_data = {
-            "audio_file": mp3_path.name,
+            "audio_file": audio_path.name,
             "language": self.current_language,
             "device": self.device,
             "duration": audio_duration,
@@ -288,46 +289,46 @@ class MP3Monitor:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
 
     def process_existing_files(self, input_dir):
-        """Process any existing MP3 files in the input directory"""
+        """Process any existing audio files in the input directory"""
         input_path = Path(input_dir)
-        mp3_files = list(input_path.glob("*.mp3"))
+        audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]"))
 
-        if mp3_files:
-            logger.info(f"Found {len(mp3_files)} existing MP3 file(s) to process:")
-            for mp3_file in mp3_files:
-                logger.info(f"  - {mp3_file.name}")
-                self.process_mp3_file(str(mp3_file))
+        if audio_files:
+            logger.info(f"Found {len(audio_files)} existing audio file(s) to process:")
+            for audio_file in audio_files:
+                logger.info(f"  - {audio_file.name}")
+                self.process_audio_file(str(audio_file))
         else:
-            logger.info("No existing MP3 files found in input directory")
+            logger.info("No existing audio files found in input directory")
 
     def monitor_directory(self, input_dir):
-        """Monitor the input directory for new MP3 files"""
+        """Monitor the input directory for new audio files"""
         logger.info(f"Monitoring directory: {input_dir.absolute()}")
         logger.info("Language detection:")
-        logger.info("  - Files with '-en.mp3' or '-en-' in filename: English transcription")
+        logger.info("  - Files with '-en.mp3', '-en.m4a' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
-        logger.info(f"Drop MP3 files into {input_dir} directory to start transcription")
+        logger.info(f"Drop MP3 or M4A files into {input_dir} directory to start transcription")
         logger.info("Files will be processed only after they are stable (not growing) for 10 seconds")
         logger.info("Press Ctrl+C to stop monitoring")
 
         try:
             while True:
-                # Check for new MP3 files
+                # Check for new audio files
                 input_path = Path(input_dir)
-                mp3_files = list(input_path.glob("*.mp3"))
+                audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]"))
 
-                for mp3_file in mp3_files:
+                for audio_file in audio_files:
                     # Check if file is stable before processing
-                    if self.is_file_stable(mp3_file):
-                        logger.info(f"File is stable, processing: {mp3_file.name}")
-                        self.process_mp3_file(str(mp3_file))
+                    if self.is_file_stable(audio_file):
+                        logger.info(f"File is stable, processing: {audio_file.name}")
+                        self.process_audio_file(str(audio_file))
                     else:
                         # File detected but not stable yet
-                        if str(mp3_file) not in self.file_sizes:
-                            logger.info(f"New MP3 file detected, waiting for stability: {mp3_file.name}")
+                        if str(audio_file) not in self.file_sizes:
+                            logger.info(f"New audio file detected, waiting for stability: {audio_file.name}")
                         else:
-                            current_size = mp3_file.stat().st_size
-                            logger.debug(f"File {mp3_file.name} still growing (size: {current_size} bytes)")
+                            current_size = audio_file.stat().st_size
+                            logger.debug(f"File {audio_file.name} still growing (size: {current_size} bytes)")
 
                 time.sleep(5)  # Polling interval
 
@@ -378,12 +379,12 @@ class MP3Monitor:
 def main():
     """Main function to start file monitoring"""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="MP3 File Monitor and Transcription System")
+    parser = argparse.ArgumentParser(description="Audio File Monitor and Transcription System")
     parser.add_argument(
         "--input-dir",
         type=str,
         default="./input",
-        help="Input directory to monitor for MP3 files (default: ./input)"
+        help="Input directory to monitor for MP3 and M4A files (default: ./input)"
     )
     args = parser.parse_args()
 
@@ -392,11 +393,11 @@ def main():
     input_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 50)
-    logger.info("MP3 FILE MONITOR AND TRANSCRIPTION SYSTEM")
+    logger.info("AUDIO FILE MONITOR AND TRANSCRIPTION SYSTEM")
     logger.info("=" * 50)
 
     # Create event handler and observer
-    event_handler = MP3Monitor(input_dir=args.input_dir)
+    event_handler = AudioFileMonitor(input_dir=args.input_dir)
 
     # Process any existing files in the input directory
     event_handler.process_existing_files(input_dir)
