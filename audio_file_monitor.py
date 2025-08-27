@@ -10,6 +10,7 @@ import shutil
 import threading
 import json
 import argparse
+import re
 from pathlib import Path
 import whisperx
 import gc
@@ -35,7 +36,6 @@ class AudioFileMonitor:
         self.current_language = None
         self.model_a = None
         self.metadata = None
-        self.file_sizes = {}  # Track file sizes to detect when writing is complete
         self.supported_extensions = {'.mp3', '.m4a'}
         self.setup_whisperx()
 
@@ -308,7 +308,7 @@ class AudioFileMonitor:
         logger.info("  - Files with '-en.mp3', '-en.m4a' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
         logger.info(f"Drop MP3 or M4A files into {input_dir} directory to start transcription")
-        logger.info("Files will be processed only after they are stable (not growing) for 10 seconds")
+        logger.info("Files will be processed after recording is completed (filename date/time no longer matches file modification time)")
         logger.info("Press Ctrl+C to stop monitoring")
 
         try:
@@ -318,17 +318,13 @@ class AudioFileMonitor:
                 audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]"))
 
                 for audio_file in audio_files:
-                    # Check if file is stable before processing
-                    if self.is_file_stable(audio_file):
-                        logger.info(f"File is stable, processing: {audio_file.name}")
+                    # Check if file is still being recorded
+                    if not self.is_recording(audio_file):
+                        logger.info(f"File is ready (recording finished), processing: {audio_file.name}")
                         self.process_audio_file(str(audio_file))
                     else:
-                        # File detected but not stable yet
-                        if str(audio_file) not in self.file_sizes:
-                            logger.info(f"New audio file detected, waiting for stability: {audio_file.name}")
-                        else:
-                            current_size = audio_file.stat().st_size
-                            logger.debug(f"File {audio_file.name} still growing (size: {current_size} bytes)")
+                        # File is still being recorded
+                        logger.info(f"File is still being recorded, waiting: {audio_file.name}")
 
                 time.sleep(5)  # Polling interval
 
@@ -337,44 +333,49 @@ class AudioFileMonitor:
         except Exception as e:
             logger.error(f"Error monitoring directory: {e}")
 
-    def is_file_stable(self, file_path, stability_duration=10):
+    def is_recording(self, file_path):
         """
-        Check if a file is stable (not growing) by monitoring its size.
-        Returns True if file size hasn't changed for stability_duration seconds.
+        Check if a file is still being recorded by comparing the filename date/time
+        with the file's last modified time. Returns True if recording is in progress.
+
+        Only performs the check for files with timestamp format: YYYYMMDD_HHMM-name.ext
+        For files without this format, assumes recording is not in progress (returns False).
         """
         file_path = Path(file_path)
 
         if not file_path.exists():
             return False
 
-        current_size = file_path.stat().st_size
+        # Pattern for filename: YYYYMMDD_HHMM-*.mp3 or *.m4a
+        pattern = r'^(\d{8})_(\d{4})-.*\.(mp3|m4a)$'
+        match = re.search(pattern, file_path.name, re.IGNORECASE)
 
-        # If we haven't seen this file before, start tracking it
-        if str(file_path) not in self.file_sizes:
-            self.file_sizes[str(file_path)] = {
-                'size': current_size,
-                'last_change': time.time()
-            }
+        if not match:
+            # If filename doesn't match timestamp format, assume not recording
+            # This allows processing of files without timestamp format immediately
             return False
 
-        # Check if size has changed
-        last_info = self.file_sizes[str(file_path)]
-        if current_size != last_info['size']:
-            # Size changed, update tracking info
-            self.file_sizes[str(file_path)] = {
-                'size': current_size,
-                'last_change': time.time()
-            }
+        date_str = match.group(1)  # YYYYMMDD
+        time_str = match.group(2)  # HHMM
+
+        try:
+            # Parse filename date/time
+            filename_datetime = datetime.strptime(f"{date_str}_{time_str}", "%Y%m%d_%H%M")
+
+            # Get file's last modified time
+            file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+
+            # Compare date and time up to the minute
+            # If they match, the file is likely still being recorded
+            return (filename_datetime.year == file_mtime.year and
+                    filename_datetime.month == file_mtime.month and
+                    filename_datetime.day == file_mtime.day and
+                    filename_datetime.hour == file_mtime.hour and
+                    filename_datetime.minute == file_mtime.minute)
+
+        except ValueError as e:
+            logger.warning(f"Could not parse date/time from filename {file_path.name}: {e}")
             return False
-
-        # Size hasn't changed, check if enough time has passed
-        time_since_change = time.time() - last_info['last_change']
-        if time_since_change >= stability_duration:
-            # File is stable, we can remove it from tracking
-            del self.file_sizes[str(file_path)]
-            return True
-
-        return False
 
 def main():
     """Main function to start file monitoring"""
