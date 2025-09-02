@@ -175,3 +175,4 @@ output/
 input
 input-test
 .idea/copilotDiffState.xml
+temp/
