@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Audio File Monitor and Transcription System
-Monitors input directory for MP3 and M4A files and transcribes them using WhisperX
+Monitors input directory for MP3, M4A and MP4 files and transcribes them using WhisperX
+For MP4 files, only the audio track is processed.
 """
 
 import os
@@ -36,13 +37,13 @@ class AudioFileMonitor:
         self.current_language = None
         self.model_a = None
         self.metadata = None
-        self.supported_extensions = {'.mp3', '.m4a'}
+        self.supported_extensions = {'.mp3', '.m4a', '.mp4'}
         self.setup_whisperx()
 
     def detect_language_from_filename(self, filename):
         """Detect language from filename patterns"""
         filename_lower = filename.lower()
-        if "-en.mp3" in filename_lower or "-en.m4a" in filename_lower or "-en-" in filename_lower:
+        if "-en.mp3" in filename_lower or "-en.m4a" in filename_lower or "-en.mp4" in filename_lower or "-en-" in filename_lower:
             return "en"
         return "fi"  # Default to Finnish
 
@@ -94,7 +95,7 @@ class AudioFileMonitor:
             logger.info(f"Alignment model for {language_code} already loaded")
 
     def process_audio_file(self, file_path):
-        """Process a single audio file (MP3 or M4A)"""
+        """Process a single audio file (MP3, M4A, or MP4)"""
         with self.processing_lock:
             try:
                 file_path = Path(file_path)
@@ -291,7 +292,7 @@ class AudioFileMonitor:
     def process_existing_files(self, input_dir):
         """Process any existing audio files in the input directory"""
         input_path = Path(input_dir)
-        audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]"))
+        audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
 
         if audio_files:
             logger.info(f"Found {len(audio_files)} existing audio file(s) to process:")
@@ -305,9 +306,10 @@ class AudioFileMonitor:
         """Monitor the input directory for new audio files"""
         logger.info(f"Monitoring directory: {input_dir.absolute()}")
         logger.info("Language detection:")
-        logger.info("  - Files with '-en.mp3', '-en.m4a' or '-en-' in filename: English transcription")
+        logger.info("  - Files with '-en.mp3', '-en.m4a', '-en.mp4' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
-        logger.info(f"Drop MP3 or M4A files into {input_dir} directory to start transcription")
+        logger.info(f"Drop MP3, M4A, or MP4 files into {input_dir} directory to start transcription")
+        logger.info("For MP4 files, only the audio track will be processed")
         logger.info("Files will be processed after recording is completed (filename date/time no longer matches file modification time)")
         logger.info("Press Ctrl+C to stop monitoring")
 
@@ -315,7 +317,7 @@ class AudioFileMonitor:
             while True:
                 # Check for new audio files
                 input_path = Path(input_dir)
-                audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]"))
+                audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
 
                 for audio_file in audio_files:
                     # Check if file is still being recorded
@@ -347,7 +349,7 @@ class AudioFileMonitor:
             return False
 
         # Pattern for filename: YYYYMMDD_HHMM-*.mp3 or *.m4a
-        pattern = r'^(\d{8})_(\d{4})-.*\.(mp3|m4a)$'
+        pattern = r'^(\d{8})_(\d{4})-.*\.(mp3|m4a|mp4)$'
         match = re.search(pattern, file_path.name, re.IGNORECASE)
 
         if not match:
@@ -385,7 +387,7 @@ def main():
         "--input-dir",
         type=str,
         default="./input",
-        help="Input directory to monitor for MP3 and M4A files (default: ./input)"
+        help="Input directory to monitor for MP3, M4A, and MP4 files (default: ./input)"
     )
     args = parser.parse_args()
 
