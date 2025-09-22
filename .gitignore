@@ -174,5 +174,5 @@ cython_debug/
 output/
 input
 input-test
-.idea/copilotDiffState.xml
 temp/
+.idea/copilot*.xml
