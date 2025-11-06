@@ -31,8 +31,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class AudioFileMonitor:
-    def __init__(self, input_dir="./input"):
-        self.input_dir = Path(input_dir)
+    def __init__(self, input_dirs=None):
+        if input_dirs is None:
+            input_dirs = ["./input"]
+        self.input_dirs = [Path(d) for d in input_dirs]
         self.processing_lock = threading.Lock()
         self.current_language = None
         self.model_a = None
@@ -101,9 +103,12 @@ class AudioFileMonitor:
                 file_path = Path(file_path)
                 logger.info(f"Processing audio file: {file_path.name}")
 
-                # Create directory structure: [input_dir]/[filename]/
+                # Get the parent directory (the input directory where the file was found)
+                parent_dir = file_path.parent
+
+                # Create directory structure: [parent_dir]/[filename]/
                 filename_base = file_path.stem  # filename without extension
-                target_dir = self.input_dir / filename_base
+                target_dir = parent_dir / filename_base
                 target_dir.mkdir(parents=True, exist_ok=True)
 
                 # Move audio file to target directory
@@ -289,51 +294,62 @@ class AudioFileMonitor:
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
 
-    def process_existing_files(self, input_dir):
-        """Process any existing audio files in the input directory"""
-        input_path = Path(input_dir)
-        audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
+    def process_existing_files(self):
+        """Process any existing audio files in all monitored directories"""
+        for input_dir in self.input_dirs:
+            input_path = Path(input_dir)
+            if not input_path.exists():
+                logger.warning(f"Directory {input_path} does not exist, skipping")
+                continue
 
-        if audio_files:
-            logger.info(f"Found {len(audio_files)} existing audio file(s) to process:")
-            for audio_file in audio_files:
-                logger.info(f"  - {audio_file.name}")
-                self.process_audio_file(str(audio_file))
-        else:
-            logger.info("No existing audio files found in input directory")
+            audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
 
-    def monitor_directory(self, input_dir):
-        """Monitor the input directory for new audio files"""
-        logger.info(f"Monitoring directory: {input_dir.absolute()}")
+            if audio_files:
+                logger.info(f"Found {len(audio_files)} existing audio file(s) in {input_path}:")
+                for audio_file in audio_files:
+                    logger.info(f"  - {audio_file.name}")
+                    self.process_audio_file(str(audio_file))
+            else:
+                logger.info(f"No existing audio files found in {input_path}")
+
+    def monitor_directories(self):
+        """Monitor all input directories for new audio files"""
+        logger.info(f"Monitoring {len(self.input_dirs)} directories:")
+        for input_dir in self.input_dirs:
+            logger.info(f"  - {input_dir.absolute()}")
         logger.info("Language detection:")
         logger.info("  - Files with '-en.mp3', '-en.m4a', '-en.mp4' or '-en-' in filename: English transcription")
         logger.info("  - All other files: Finnish transcription (default)")
-        logger.info(f"Drop MP3, M4A, or MP4 files into {input_dir} directory to start transcription")
+        logger.info("Drop MP3, M4A, or MP4 files into any monitored directory to start transcription")
         logger.info("For MP4 files, only the audio track will be processed")
         logger.info("Files will be processed after recording is completed (filename date/time no longer matches file modification time)")
         logger.info("Press Ctrl+C to stop monitoring")
 
         try:
             while True:
-                # Check for new audio files
-                input_path = Path(input_dir)
-                audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
+                # Check for new audio files in all monitored directories
+                for input_dir in self.input_dirs:
+                    input_path = Path(input_dir)
+                    if not input_path.exists():
+                        continue
 
-                for audio_file in audio_files:
-                    # Check if file is still being recorded
-                    if not self.is_recording(audio_file):
-                        logger.info(f"File is ready (recording finished), processing: {audio_file.name}")
-                        self.process_audio_file(str(audio_file))
-                    else:
-                        # File is still being recorded
-                        logger.info(f"File is still being recorded, waiting: {audio_file.name}")
+                    audio_files = list(input_path.glob("*.[mM][pP]3")) + list(input_path.glob("*.[mM]4[aA]")) + list(input_path.glob("*.[mM][pP]4"))
+
+                    for audio_file in audio_files:
+                        # Check if file is still being recorded
+                        if not self.is_recording(audio_file):
+                            logger.info(f"File is ready (recording finished), processing: {audio_file.name} from {input_dir}")
+                            self.process_audio_file(str(audio_file))
+                        else:
+                            # File is still being recorded
+                            logger.info(f"File is still being recorded, waiting: {audio_file.name}")
 
                 time.sleep(5)  # Polling interval
 
         except KeyboardInterrupt:
             logger.info("Stopping directory monitor...")
         except Exception as e:
-            logger.error(f"Error monitoring directory: {e}")
+            logger.error(f"Error monitoring directories: {e}")
 
     def is_recording(self, file_path):
         """
@@ -384,29 +400,46 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Audio File Monitor and Transcription System")
     parser.add_argument(
-        "--input-dir",
+        "--input-dirs",
         type=str,
-        default="./input",
-        help="Input directory to monitor for MP3, M4A, and MP4 files (default: ./input)"
+        nargs='*',
+        help="Specific input directories to monitor for MP3, M4A, and MP4 files (if not specified, discovers all 'input*' directories)"
     )
     args = parser.parse_args()
-
-    # Ensure input directory exists
-    input_dir = Path(args.input_dir)
-    input_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 50)
     logger.info("AUDIO FILE MONITOR AND TRANSCRIPTION SYSTEM")
     logger.info("=" * 50)
 
-    # Create event handler and observer
-    event_handler = AudioFileMonitor(input_dir=args.input_dir)
+    # Discover or use specified input directories
+    if args.input_dirs:
+        input_dirs = args.input_dirs
+        logger.info(f"Using specified directories: {', '.join(input_dirs)}")
+    else:
+        # Auto-discover all 'input*' directories in current directory
+        current_dir = Path(".")
+        input_dirs = [str(d) for d in current_dir.glob("input*") if d.is_dir()]
 
-    # Process any existing files in the input directory
-    event_handler.process_existing_files(input_dir)
+        if not input_dirs:
+            # If no input* directories found, create and use ./input
+            logger.info("No 'input*' directories found, creating ./input")
+            input_dirs = ["./input"]
+            Path("./input").mkdir(parents=True, exist_ok=True)
+        else:
+            logger.info(f"Discovered {len(input_dirs)} input directories: {', '.join(input_dirs)}")
 
-    # Start monitoring
-    event_handler.monitor_directory(input_dir)
+    # Ensure all directories exist
+    for input_dir in input_dirs:
+        Path(input_dir).mkdir(parents=True, exist_ok=True)
+
+    # Create event handler
+    event_handler = AudioFileMonitor(input_dirs=input_dirs)
+
+    # Process any existing files in all input directories
+    event_handler.process_existing_files()
+
+    # Start monitoring all directories
+    event_handler.monitor_directories()
 
     logger.info("File monitor stopped")
 
