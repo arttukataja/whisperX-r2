@@ -5,8 +5,10 @@ from typing import Optional, Union
 import torch
 
 from whisperx.audio import load_audio, SAMPLE_RATE
-from whisperx.types import TranscriptionResult, AlignedTranscriptionResult
-from whisperx.utils import suppress_reproducibility_warnings
+from whisperx.schema import TranscriptionResult, AlignedTranscriptionResult
+from whisperx.log_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class DiarizationPipeline:
@@ -21,6 +23,7 @@ class DiarizationPipeline:
 
         suppress_reproducibility_warnings()
         model_config = model_name or "pyannote/speaker-diarization-3.1"
+        logger.info(f"Loading diarization model: {model_config}")
         self.model = Pipeline.from_pretrained(model_config, use_auth_token=use_auth_token).to(device)
 
         # Re-enable TF32 after pyannote modified it
