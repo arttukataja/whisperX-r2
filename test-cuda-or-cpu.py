@@ -118,16 +118,16 @@ with open(output_file, 'w', encoding='utf-8') as f:
 
     for i, segment in enumerate(result["segments"]):
         speaker = segment.get('speaker', 'UNKNOWN')
-        start_time = segment['start']
-        end_time = segment['end']
+        seg_start = segment['start']
+        seg_end = segment['end']
         text = segment['text']
-        f.write(f"[{i + 1:03d}] {speaker} ({start_time:.2f}s-{end_time:.2f}s): {text}\n")
+        f.write(f"[{i + 1:03d}] {speaker} ({seg_start:.2f}s-{seg_end:.2f}s): {text}\n")
 
 print(f"  ✓ Results saved to {output_file}")
 
 # Calculate and display timing results
-end_time = time.time()
-processing_time = time.time() - processing_start_time
+processing_end_time = time.time()
+processing_time = processing_end_time - processing_start_time
 speed_ratio = audio_duration / processing_time
 
 print(f"\n" + "=" * 50)

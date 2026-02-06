@@ -1,0 +1,117 @@
+---
+version: 1
+
+### 1. BASE INSTRUCTIONS (Required)
+#
+#
+instructions: |-
+  
+  Huomaat, että test-cuda-or-cpu.py aikalaskurissa on bugi. Alla timing breakdown. Korjaa bugi.
+  
+  ==================================================
+  DETAILED TIMING BREAKDOWN:
+  ==================================================
+  Transcription: 85.59s (0.0%)
+  Alignment: 7.00s (0.0%)
+  Diarization: 115.87s (0.0%)
+  Speaker assignment: 0.10s (0.0%)
+  Other operations: 1770404255.36s
+  
+  === FINAL TIMING RESULTS ===
+  Audio duration: 184.42 seconds
+  Processing time: 1770404463.92 seconds
+  Speed ratio: 0.00x (processing time vs audio length)
+  Processing was 9600013.36x slower than real-time
+  
+  Transcript saved to: output/20260206_210403.txt
+
+
+### 2. FILES
+#
+# Paths and excludedPaths use glob patterns
+# Uncomment and modify the following to define file groups.
+#
+files:
+  - name: "code"
+    paths:
+      - "test-cuda-or-cpu.py"
+      - "whisperx/*.py"
+
+  - name: "console_output"
+    paths:
+      - "console-output.txt"
+
+
+#  - name: "code"
+
+#    paths:
+#      - "src/main/java/**.java"
+#    excludedPaths:
+#      - "src/main/java/fi/evolver/prompttools/model/**"
+#  - name: "external-docs"
+#    paths:
+#      - "$HOME/Documents/project-docs/**/*.md"
+#
+#filesRoot: "../project-root"     # Optional base directory for resolving file paths. Can be absolute or relative to this sourcepack file.
+                                  # Supports ~, $HOME, and ${HOME} for home directory.
+
+### 3. OUTPUT FORMAT
+#
+# This will define the AI output format. Choose one.
+#outputInstructionsResource: "markdown_suomi.md"                        # Finnish markdown
+#outputInstructionsResource: "markdown_english.md"                      # English markdown
+#outputInstructionsResource: "mermaid_and_markdown.md"                  # Markdown with Mermaid diagrams
+#outputInstructionsResource: "files_inside_markdown.md"                 # Multiple markdown files
+#outputInstructionsResource: "files_inside_markdown_with_diffs.md"      # Multiple markdown files with full file contents or content changes
+#outputInstructionsResource: "code_files_inside_markdown.md"            # Multiple code files
+outputInstructionsResource: "code_files_inside_markdown_with_diffs.md" # Multiple code files with full file contents or content changes
+
+
+
+### 4. AI MODELS
+#
+# AI models, choose 0-x presets or models. Use presets by default, and models only if you want to define low level attributes.
+models:
+#
+# Secure models:
+#  - preset: "google-eu-gemini-2.5-pro-thinking-high"
+#  - preset: "google-eu-opus-4.6-thinking-high"
+  - preset: "google-eu-opus-4.5-thinking-high"
+#  - preset: "google-eu-gemini-2.5-flash"
+#  - preset: "aws-eu-claude-sonnet-4.5-thinking-high"
+#  - preset: "azure-eu-openai-gpt-5-thinking-high"
+#  - preset: azure-eu-openai-gpt-4.1
+#
+# Non-secure models (not used for training, but...)
+#  - preset: "google-global-gemini-3-pro-preview-thinking-high"
+#  - preset: "google-global-gemini-3-flash-preview-thinking-high"
+#  - preset: "anthropic-claude-opus-4.5-thinking-high"
+#  - preset: "anthropic-claude-opus-4.1-thinking-high"
+#  - preset: "openai-gpt-5.1-websearch"
+#  - preset: "openai-gpt-5.1-thinking-high"
+#  - preset: "openai-gpt-5-thinking-high"
+#
+#  - model: "gpt-4.1"
+#    provider: "azure-responses"
+#    temperature: 0.1
+
+
+
+### 5. ADDITIONAL SETTINGS
+
+# 5.1 Optional system message
+#systemPrompt: "..."
+
+# 5.2 Direct way to set the output instructions
+#outputInstructions: |-
+#  Palauta siisti markdown-dokumentti.
+#
+#  Käytä selkeästi markdownin # ## ### #### otsikkotasoja. Älä numeroi otsikoita ellei käyttäjä erikseen pyydä tätä.
+
+# 5.3 Define prompt-tool results working directory. By default this is ./prompt-tool-results.
+#resultsDir: ".prompt-tool-results-hidden"
+
+
+# 5.3 Restricting this sourcepack to only run against a specific backend URL. If set and the current API URL doesn't match, an error will be thrown.
+#requiredBackendUrl: "https://evolver.mylly.ai/api/prompt-tool"
+
