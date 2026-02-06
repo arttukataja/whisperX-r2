@@ -36,7 +36,7 @@ def setup_logging(*args, **kwargs):
     Configure logging for WhisperX.
 
     Args:
-        level: Logging level (debug, info, warning, error, critical). Default: warning
+        level: Logging level (debug, info, warning, error, critical). Default: info
         log_file: Optional path to log file. If None, logs only to console.
     """
     logging_module = _lazy_import("log_utils")
